@@ -133,7 +133,7 @@ export default function AsmSurveyPage() {
   const filteredTours =
     activeTab === "ACTIVE TOUR"
       ? tours.filter((t) => t.status === true)
-      : tours.filter((t) => t.status === false);
+      : tours; // show all tours for the "All Tour" tab
 
   // ✅ SEND TOUR ID
   const handleViewSurvey = (tourId: string) => {
@@ -177,7 +177,7 @@ export default function AsmSurveyPage() {
             <Image src="/wallet.png" alt="Today Expense" width={60} height={60} />
             <div>
               <p className="text-sm text-gray-500 pb-2">Today Expense</p>
-              <h3 className="text-2xl font-bold">2500</h3>
+              <h3 className="text-2xl font-bold">00</h3>
             </div>
           </CardContent>
         </Card>
@@ -187,7 +187,7 @@ export default function AsmSurveyPage() {
             <Image src="/wallet.png" alt="Total Expense" width={60} height={60} />
             <div>
               <p className="text-sm text-gray-500 pb-2">Total Expense</p>
-              <h3 className="text-2xl font-bold">1,24,564</h3>
+              <h3 className="text-2xl font-bold">00</h3>
             </div>
           </CardContent>
         </Card>
