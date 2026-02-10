@@ -5,3 +5,6 @@ export const checkUserBeforeLogin = (payload) =>
 
 export const activateUserAfterOtp = (payload) => 
   callFunction("activateUserAfterOtp", payload);
+
+export const createUserByPhone = (payload) => 
+  callFunction("createUserByPhone", payload);
