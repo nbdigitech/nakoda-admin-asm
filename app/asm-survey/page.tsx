@@ -14,17 +14,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Eye, MapPin, Plus } from "lucide-react";
-import { getTour } from "@/services/masterData";
 import AddStaffModal from "@/components/staff/add-staff-modal";
+import { Eye, MapPin, Plus } from "lucide-react";
+import { getTour, getSurvey } from "@/services/masterData";
 
-/* ================= SURVEY STATS ================= */
-const surveyStats = [
-  { title: "Today Survey", value: "3", image: "/survey.png" },
-  { title: "Total Survey", value: "520", image: "/survey.png" },
-  { title: "Today Expense", value: "2500", image: "/wallet.png" },
-  { title: "Total Expense", value: "1,24,564", image: "/wallet.png" },
-];
+// 🔹 Firestore
+
+/* ================= SURVEY STATS (dynamic) ================= */
 
 /* ================= DATE FORMATTER ================= */
 const formatDate = (timestamp: any) => {
@@ -55,15 +51,24 @@ export default function AsmSurveyPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState("ACTIVE TOUR");
+
+  // 🔹 Tours
   const [tours, setTours] = useState<any[]>([]);
+
+  // Survey counts
+  const [totalSurveys, setTotalSurveys] = useState<number>(0);
+  const [todaySurveys, setTodaySurveys] = useState<number>(0);
+
+  // 🔹 Users cache (FULL USER DATA)
   const [userMap, setUserMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
+  // ✅ LOAD PREVIOUS DATA + BACKGROUND FETCH
   useEffect(() => {
     const cachedTours = localStorage.getItem("asm_tours_cache");
     if (cachedTours) {
       setTours(JSON.parse(cachedTours));
-      setLoading(false);
+      setLoading(false); // Show previous data immediately
     }
 
     const fetchTours = async () => {
@@ -83,13 +88,54 @@ export default function AsmSurveyPage() {
     fetchTours();
   }, []);
 
-  const tabs = ["ACTIVE TOUR", "All Tour"];
+  // Fetch all surveys to compute stats (total + today)
+  useEffect(() => {
+    const cached = localStorage.getItem("asm_all_surveys_cache");
+    const todayStr = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    if (cached) {
+      try {
+        const data = JSON.parse(cached || "[]");
+        setTotalSurveys(Array.isArray(data) ? data.length : 0);
+        setTodaySurveys(
+          Array.isArray(data)
+            ? data.filter((s: any) => formatDate(s.createdAt) === todayStr).length
+            : 0,
+        );
+      } catch (err) {
+        console.error("Error parsing cached surveys:", err);
+      }
+    }
+
+    const fetchAllSurveys = async () => {
+      try {
+        const res: any = await getSurvey();
+        const data = res && res.data ? res.data : [];
+        if (Array.isArray(data)) {
+          setTotalSurveys(data.length);
+          setTodaySurveys(data.filter((s: any) => formatDate(s.createdAt) === todayStr).length);
+          localStorage.setItem("asm_all_surveys_cache", JSON.stringify(data));
+        }
+      } catch (error) {
+        console.error("Error fetching all surveys:", error);
+      }
+    };
+
+    fetchAllSurveys();
+  }, []);
+
+  const tabs = ["ACTIVE TOUR", "All TOUR"];
 
   const filteredTours =
     activeTab === "ACTIVE TOUR"
       ? tours.filter((t) => t.status === true)
       : tours.filter((t) => t.status === false);
 
+  // ✅ SEND TOUR ID
   const handleViewSurvey = (tourId: string) => {
     router.push(`/asm-survey/survey-details?tourId=${tourId}`);
   };
@@ -106,17 +152,45 @@ export default function AsmSurveyPage() {
     <DashboardLayout>
       {/* ================= STATS ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {surveyStats.map((stat) => (
-          <Card key={stat.title} className="rounded-xl">
-            <CardContent className="flex justify-between items-center gap-3 p-3">
-              <Image src={stat.image} alt={stat.title} width={60} height={60} />
-              <div>
-                <p className="text-sm text-gray-500 pb-2">{stat.title}</p>
-                <h3 className="text-2xl font-bold">{stat.value}</h3>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <Card className="rounded-xl">
+          <CardContent className="flex justify-between items-center gap-3 p-3">
+            <Image src="/survey.png" alt="Today Survey" width={60} height={60} />
+            <div>
+              <p className="text-sm text-gray-500 pb-2">Today Survey</p>
+              <h3 className="text-2xl font-bold">{todaySurveys}</h3>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl">
+          <CardContent className="flex justify-between items-center gap-3 p-3">
+            <Image src="/survey.png" alt="Total Survey" width={60} height={60} />
+            <div>
+              <p className="text-sm text-gray-500 pb-2">Total Survey</p>
+              <h3 className="text-2xl font-bold">{totalSurveys}</h3>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl">
+          <CardContent className="flex justify-between items-center gap-3 p-3">
+            <Image src="/wallet.png" alt="Today Expense" width={60} height={60} />
+            <div>
+              <p className="text-sm text-gray-500 pb-2">Today Expense</p>
+              <h3 className="text-2xl font-bold">2500</h3>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl">
+          <CardContent className="flex justify-between items-center gap-3 p-3">
+            <Image src="/wallet.png" alt="Total Expense" width={60} height={60} />
+            <div>
+              <p className="text-sm text-gray-500 pb-2">Total Expense</p>
+              <h3 className="text-2xl font-bold">1,24,564</h3>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* ================= TABLE ================= */}
@@ -181,23 +255,32 @@ export default function AsmSurveyPage() {
                 </TableRow>
               )}
 
+              {/* Show previous data or new data */}
               {tours.length > 0 &&
                 filteredTours.map((item, index) => (
                   <TableRow key={item.id} className="hover:bg-gray-50 text-sm">
                     <TableCell>{index + 1}</TableCell>
+
                     <TableCell className="font-medium">
                       {item.tourName || "—"}
                     </TableCell>
+
                     <TableCell>
                       {item.staffId?.substring(0, 12) || "—"}
                     </TableCell>
+
+                    {/* START DATE */}
                     <TableCell>{formatDate(item.startDate)}</TableCell>
+
+                    {/* USER NAME */}
                     <TableCell>{userMap[item.staffId]?.name || "—"}</TableCell>
+
                     <TableCell>
                       {userMap[item.staffId]?.phone ||
                         userMap[item.staffId]?.phoneNumber ||
                         "—"}
                     </TableCell>
+
                     <TableCell>
                       <Button
                         onClick={() => handleViewExpenses(item.id)}
@@ -209,6 +292,7 @@ export default function AsmSurveyPage() {
                         View
                       </Button>
                     </TableCell>
+
                     <TableCell>
                       <Button
                         onClick={() => handleViewSurvey(item.id)}
@@ -220,6 +304,7 @@ export default function AsmSurveyPage() {
                         View
                       </Button>
                     </TableCell>
+
                     <TableCell>
                       <Button
                         onClick={() => handleViewLocation(item.id)}
