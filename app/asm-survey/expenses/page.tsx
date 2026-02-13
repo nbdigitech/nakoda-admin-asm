@@ -39,6 +39,7 @@ function ExpensesContent() {
   const [surveyRoutes, setSurveyRoutes] = useState<SurveyRoute[]>([]);
   const [expandedRoutes, setExpandedRoutes] = useState<(string | number)[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterValue, setFilterValue] = useState("0"); // 0: current, 1: 1 month, 2: 3 months
 
   useEffect(() => {
     if (!tourId) {
@@ -50,7 +51,7 @@ function ExpensesContent() {
       try {
         setLoading(true);
         console.log("getExpenses function:", getExpenses);
-        const payload = { tourId };
+        const payload = { tourId, filter: parseInt(filterValue) };
         console.log("Calling getExpenses with payload:", payload);
         const res: any = await getExpenses(payload);
         console.log("getExpenses response:", res);
@@ -72,20 +73,68 @@ function ExpensesContent() {
             0,
           );
 
+          // Helper function to extract and format date from any field
+          const getDateString = (item: any): string => {
+            // Try multiple date field names
+            const dateField = item?.createdAt || item?.created_at || item?.createdDate || item?.date || item?.timestamp;
+            
+            if (!dateField) {
+              console.warn("No date field found in item:", item);
+              return "Recent";
+            }
+
+            try {
+              let date: Date;
+              
+              // Handle Firestore timestamp (seconds property)
+              if (dateField.seconds !== undefined) {
+                date = new Date(dateField.seconds * 1000);
+              }
+              // Handle Firestore timestamp with _seconds
+              else if (dateField._seconds !== undefined) {
+                date = new Date(dateField._seconds * 1000);
+              }
+              // Handle milliseconds timestamp
+              else if (typeof dateField === "number") {
+                date = new Date(dateField);
+              }
+              // Handle date string
+              else if (typeof dateField === "string") {
+                date = new Date(dateField);
+              }
+              // Handle Date object
+              else if (dateField instanceof Date) {
+                date = dateField;
+              }
+              // Try toDate method (Firestore Timestamp)
+              else if (typeof dateField.toDate === "function") {
+                date = dateField.toDate();
+              }
+              else {
+                console.warn("Unknown date format:", dateField);
+                return "Recent";
+              }
+
+              if (isNaN(date.getTime())) {
+                console.warn("Invalid date:", dateField);
+                return "Recent";
+              }
+
+              return date.toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              });
+            } catch (error) {
+              console.error("Error parsing date:", error, dateField);
+              return "Recent";
+            }
+          };
+
           const route: SurveyRoute = {
             id: tourId,
             title: "Tour Expenses",
-            date: data[0]?.createdAt
-              ? new Date(
-                  data[0].createdAt.seconds
-                    ? data[0].createdAt.seconds * 1000
-                    : data[0].createdAt,
-                ).toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
-              : "Recent",
+            date: data[0] ? getDateString(data[0]) : "Recent",
             expenses: mappedExpenses,
             totalExpense: total,
             status: "Pending",
@@ -102,7 +151,7 @@ function ExpensesContent() {
     };
 
     fetchExpenses();
-  }, [tourId]);
+  }, [tourId, filterValue]);
 
   const toggleRoute = (id: string | number) => {
     setExpandedRoutes((prev) =>
@@ -129,8 +178,14 @@ function ExpensesContent() {
           <select className="px-4 py-2 border rounded-lg text-sm bg-[#F87B1B1A] text-[#F87B1B] font-semibold">
             <option>District</option>
           </select>
-          <select className=" bg-[#F87B1B1A] text-[#F87B1B] px-4 py-2 border rounded-lg text-sm">
-            <option>1 Month</option>
+          <select 
+            value={filterValue}
+            onChange={(e) => setFilterValue(e.target.value)}
+            className=" bg-[#F87B1B1A] text-[#F87B1B] px-4 py-2 border rounded-lg text-sm"
+          >
+            <option value="0">Today</option>
+            <option value="1">1 Month</option>
+            <option value="2">3 Months</option>
           </select>
         </div>
       </div>

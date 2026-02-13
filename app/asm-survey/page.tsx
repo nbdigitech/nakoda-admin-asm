@@ -149,7 +149,8 @@ export default function AsmSurveyPage() {
   };
 
   const handleViewExpenses = (tourId: string) => {
-    router.push(`/asm-survey/expenses?tourId=${tourId}`);
+    // Pass filter=0 and number=0 to indicate 'today' by backend convention
+    router.push(`/asm-survey/expenses?tourId=${tourId}&filter=1&number=2`);
   };
 
   const handleViewLocation = (tourId: string) => {
