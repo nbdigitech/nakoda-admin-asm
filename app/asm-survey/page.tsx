@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,9 +55,8 @@ export default function AsmSurveyPage() {
   // 🔹 Tours
   const [tours, setTours] = useState<any[]>([]);
 
-  // Survey counts
-  const [totalSurveys, setTotalSurveys] = useState<number>(0);
-  const [todaySurveys, setTodaySurveys] = useState<number>(0);
+  // Surveys
+  const [allSurveys, setAllSurveys] = useState<any[]>([]);
 
   // 🔹 Users cache (FULL USER DATA)
   const [userMap, setUserMap] = useState<Record<string, any>>({});
@@ -88,25 +87,14 @@ export default function AsmSurveyPage() {
     fetchTours();
   }, []);
 
-  // Fetch all surveys to compute stats (total + today)
+  // Fetch all surveys to compute stats
   useEffect(() => {
     const cached = localStorage.getItem("asm_all_surveys_cache");
-    const todayStr = new Date().toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
 
     if (cached) {
       try {
         const data = JSON.parse(cached || "[]");
-        setTotalSurveys(Array.isArray(data) ? data.length : 0);
-        setTodaySurveys(
-          Array.isArray(data)
-            ? data.filter((s: any) => formatDate(s.createdAt) === todayStr)
-                .length
-            : 0,
-        );
+        setAllSurveys(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error parsing cached surveys:", err);
       }
@@ -117,11 +105,7 @@ export default function AsmSurveyPage() {
         const res: any = await getSurvey();
         const data = res && res.data ? res.data : [];
         if (Array.isArray(data)) {
-          setTotalSurveys(data.length);
-          setTodaySurveys(
-            data.filter((s: any) => formatDate(s.createdAt) === todayStr)
-              .length,
-          );
+          setAllSurveys(data);
           localStorage.setItem("asm_all_surveys_cache", JSON.stringify(data));
         }
       } catch (error) {
@@ -132,12 +116,32 @@ export default function AsmSurveyPage() {
     fetchAllSurveys();
   }, []);
 
-  const tabs = ["ACTIVE TOUR", "All TOUR"];
+  const filteredTours = useMemo(() => {
+    return activeTab === "ACTIVE TOUR"
+      ? tours.filter((t: any) => t.status === true)
+      : tours;
+  }, [activeTab, tours]);
 
-  const filteredTours =
-    activeTab === "ACTIVE TOUR"
-      ? tours.filter((t) => t.status === true)
-      : tours; // show all tours for the "All Tour" tab
+  const surveyStats = useMemo(() => {
+    const todayStr = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    const activeTourIds = new Set(filteredTours.map((t: any) => t.id));
+    const relatedSurveys = allSurveys.filter((s) =>
+      activeTourIds.has(s.tourId),
+    );
+
+    return {
+      total: relatedSurveys.length,
+      today: relatedSurveys.filter((s) => formatDate(s.createdAt) === todayStr)
+        .length,
+    };
+  }, [allSurveys, filteredTours]);
+
+  const tabs = ["ACTIVE TOUR", "All TOUR"];
 
   // ✅ SEND TOUR ID
   const handleViewSurvey = (tourId: string) => {
@@ -166,7 +170,7 @@ export default function AsmSurveyPage() {
             />
             <div>
               <p className="text-sm text-gray-500 pb-2">Today Survey</p>
-              <h3 className="text-2xl font-bold">{todaySurveys}</h3>
+              <h3 className="text-2xl font-bold">{surveyStats.today}</h3>
             </div>
           </CardContent>
         </Card>
@@ -181,7 +185,7 @@ export default function AsmSurveyPage() {
             />
             <div>
               <p className="text-sm text-gray-500 pb-2">Total Survey</p>
-              <h3 className="text-2xl font-bold">{totalSurveys}</h3>
+              <h3 className="text-2xl font-bold">{surveyStats.total}</h3>
             </div>
           </CardContent>
         </Card>
@@ -297,13 +301,9 @@ export default function AsmSurveyPage() {
                     <TableCell>{formatDate(item.startDate)}</TableCell>
 
                     {/* USER NAME */}
-                    <TableCell>{userMap[item.staffId]?.name || "—"}</TableCell>
+                    <TableCell>{item?.staffName || "name"}</TableCell>
 
-                    <TableCell>
-                      {userMap[item.staffId]?.phone ||
-                        userMap[item.staffId]?.phoneNumber ||
-                        "—"}
-                    </TableCell>
+                    <TableCell>{item.staffPhone || "number"}</TableCell>
 
                     <TableCell>
                       <Button
