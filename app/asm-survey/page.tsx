@@ -103,7 +103,8 @@ export default function AsmSurveyPage() {
         setTotalSurveys(Array.isArray(data) ? data.length : 0);
         setTodaySurveys(
           Array.isArray(data)
-            ? data.filter((s: any) => formatDate(s.createdAt) === todayStr).length
+            ? data.filter((s: any) => formatDate(s.createdAt) === todayStr)
+                .length
             : 0,
         );
       } catch (err) {
@@ -117,7 +118,10 @@ export default function AsmSurveyPage() {
         const data = res && res.data ? res.data : [];
         if (Array.isArray(data)) {
           setTotalSurveys(data.length);
-          setTodaySurveys(data.filter((s: any) => formatDate(s.createdAt) === todayStr).length);
+          setTodaySurveys(
+            data.filter((s: any) => formatDate(s.createdAt) === todayStr)
+              .length,
+          );
           localStorage.setItem("asm_all_surveys_cache", JSON.stringify(data));
         }
       } catch (error) {
@@ -154,7 +158,12 @@ export default function AsmSurveyPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <Card className="rounded-xl">
           <CardContent className="flex justify-between items-center gap-3 p-3">
-            <Image src="/survey.png" alt="Today Survey" width={60} height={60} />
+            <Image
+              src="/survey.png"
+              alt="Today Survey"
+              width={60}
+              height={60}
+            />
             <div>
               <p className="text-sm text-gray-500 pb-2">Today Survey</p>
               <h3 className="text-2xl font-bold">{todaySurveys}</h3>
@@ -164,7 +173,12 @@ export default function AsmSurveyPage() {
 
         <Card className="rounded-xl">
           <CardContent className="flex justify-between items-center gap-3 p-3">
-            <Image src="/survey.png" alt="Total Survey" width={60} height={60} />
+            <Image
+              src="/survey.png"
+              alt="Total Survey"
+              width={60}
+              height={60}
+            />
             <div>
               <p className="text-sm text-gray-500 pb-2">Total Survey</p>
               <h3 className="text-2xl font-bold">{totalSurveys}</h3>
@@ -174,7 +188,12 @@ export default function AsmSurveyPage() {
 
         <Card className="rounded-xl">
           <CardContent className="flex justify-between items-center gap-3 p-3">
-            <Image src="/wallet.png" alt="Today Expense" width={60} height={60} />
+            <Image
+              src="/wallet.png"
+              alt="Today Expense"
+              width={60}
+              height={60}
+            />
             <div>
               <p className="text-sm text-gray-500 pb-2">Today Expense</p>
               <h3 className="text-2xl font-bold">00</h3>
@@ -184,7 +203,12 @@ export default function AsmSurveyPage() {
 
         <Card className="rounded-xl">
           <CardContent className="flex justify-between items-center gap-3 p-3">
-            <Image src="/wallet.png" alt="Total Expense" width={60} height={60} />
+            <Image
+              src="/wallet.png"
+              alt="Total Expense"
+              width={60}
+              height={60}
+            />
             <div>
               <p className="text-sm text-gray-500 pb-2">Total Expense</p>
               <h3 className="text-2xl font-bold">00</h3>

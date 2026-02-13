@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createUserByPhone } from "@/services/user";
+import { createUserByPhone, checkUserBeforeLogin } from "@/services/user";
 import {
   getCity,
   getDesignation,
@@ -69,6 +69,9 @@ export default function AddStaffModal({
   const [staffManagement, setStaffManagement] = React.useState<boolean>(false);
   const [masterDataManagement, setMasterDataManagement] =
     React.useState<boolean>(false);
+  const [isPhoneRegistered, setIsPhoneRegistered] =
+    React.useState<boolean>(false);
+  const [checkingPhone, setCheckingPhone] = React.useState<boolean>(false);
 
   const fileToBase64 = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -102,7 +105,45 @@ export default function AddStaffModal({
     }
   };
 
+  const handlePhoneChange = async (val: string) => {
+    setPhone(val);
+    const cleanPhone = val.replace(/^\+91/, "").replace(/\D/g, "");
+    if (cleanPhone.length === 10) {
+      try {
+        setCheckingPhone(true);
+        const payload = { phoneNumber: cleanPhone };
+        const res: any = await checkUserBeforeLogin(payload);
+
+        // Adjust structural check based on common patterns or what was likely intended
+        if (
+          res?.data?.data?.length > 0 ||
+          res?.data?.length > 0 ||
+          res?.length > 0
+        ) {
+          setIsPhoneRegistered(true);
+        } else {
+          setIsPhoneRegistered(false);
+        }
+      } catch (err) {
+        console.error("Phone check error:", err);
+        setIsPhoneRegistered(false);
+      } finally {
+        setCheckingPhone(false);
+      }
+    } else {
+      setIsPhoneRegistered(false);
+    }
+  };
+
   const handleSubmit = async () => {
+    if (isPhoneRegistered) {
+      toast({
+        title: "Error",
+        description: "Cannot create user: phone number already registered.",
+        variant: "destructive",
+      });
+      return;
+    }
     const permissions: string[] = [];
     if (orderManagement) permissions.push("order_management");
     if (staffManagement) permissions.push("staff_management");
@@ -271,13 +312,27 @@ export default function AddStaffModal({
                     <Input
                       placeholder="9405005285"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
                       className={`w-full border-2 transition ${
-                        focusedField === "phone" ? "!border-[#F87B1B]" : null
+                        isPhoneRegistered
+                          ? "!border-red-500"
+                          : focusedField === "phone"
+                            ? "!border-[#F87B1B]"
+                            : null
                       }`}
                       onFocus={() => setFocusedField("phone")}
                       onBlur={() => setFocusedField(null)}
                     />
+                    {isPhoneRegistered && (
+                      <p className="text-[10px] text-red-500 mt-1">
+                        phone number already register use differ
+                      </p>
+                    )}
+                    {checkingPhone && (
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        Checking phone number...
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -393,6 +448,7 @@ export default function AddStaffModal({
               <div className="flex justify-center pt-6">
                 <Button
                   className="bg-[#F87B1B] hover:bg-[#e86f12] text-white px-12"
+                  disabled={isPhoneRegistered || checkingPhone}
                   onClick={() => setStep(2)}
                 >
                   Next
