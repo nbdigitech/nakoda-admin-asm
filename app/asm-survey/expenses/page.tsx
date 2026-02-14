@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Download, Loader2 } from "lucide-react";
+import { Plus, Minus, Download, Loader2, X } from "lucide-react";
 import { getExpenses } from "@/services/masterData";
 
 interface Expense {
@@ -40,6 +40,10 @@ function ExpensesContent() {
   const [expandedRoutes, setExpandedRoutes] = useState<(string | number)[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterValue, setFilterValue] = useState("0"); // 0: current, 1: 1 month, 2: 3 months
+  const [remarkDrawerOpen, setRemarkDrawerOpen] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<SurveyRoute | null>(null);
+  const [remarkText, setRemarkText] = useState("");
+  const [remarkStatus, setRemarkStatus] = useState("Approved");
 
   useEffect(() => {
     if (!tourId) {
@@ -159,6 +163,46 @@ function ExpensesContent() {
     );
   };
 
+  const openRemarkDrawer = (route: SurveyRoute) => {
+    setSelectedRoute(route);
+    setRemarkText(route.remarks || "");
+    setRemarkStatus(route.status || "Approved");
+    setRemarkDrawerOpen(true);
+  };
+
+  const closeRemarkDrawer = () => {
+    setRemarkDrawerOpen(false);
+    setSelectedRoute(null);
+    setRemarkText("");
+    setRemarkStatus("Approved");
+  };
+
+  const handleUpdateRemark = async () => {
+    if (!selectedRoute) return;
+
+    try {
+      console.log("Updating remark for route:", selectedRoute.id, {
+        remark: remarkText,
+        status: remarkStatus,
+      });
+      // TODO: Add API call to update remarks
+      // await updateExpenseRemark(selectedRoute.id, { remarks: remarkText, status: remarkStatus });
+
+      // Update local state
+      setSurveyRoutes((prev) =>
+        prev.map((route) =>
+          route.id === selectedRoute.id
+            ? { ...route, remarks: remarkText, status: remarkStatus }
+            : route,
+        ),
+      );
+
+      closeRemarkDrawer();
+    } catch (error) {
+      console.error("Error updating remark:", error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -200,8 +244,8 @@ function ExpensesContent() {
           surveyRoutes.map((route) => (
             <div key={route.id} className="space-y-2">
               {/* Route Header */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1 bg-[#F87B1B1A] rounded-lg px-3 py-2 flex items-center justify-between">
+              <div className="flex justify-between items-center gap-4">
+                <div className="w-full bg-[#F87B1B1A] rounded-lg px-6 py-2 flex items-center justify-between">
                   <div>
                     <h3 className="text-md font-semibold text-[#F87B1B]">
                       {route.title}
@@ -220,8 +264,15 @@ function ExpensesContent() {
                     )}
                   </button>
                 </div>
-              </div>
-
+               <div className=" flex justify-end">
+                    <Button
+                      onClick={() => openRemarkDrawer(route)}
+                      className="bg-[#F87B1B] hover:bg-[#E86A0A] text-white font-semibold  text-md px-8 py-6"
+                    >
+                      Remark
+                    </Button>
+                  </div>
+</div>
               {/* Expanded Content */}
               {expandedRoutes.includes(route.id) && (
                 <div className="bg-white rounded-lg border p-5 w-full lg:w-[87%]">
@@ -273,12 +324,107 @@ function ExpensesContent() {
                       ₹ {route.totalExpense}
                     </span>
                   </div>
+
+                  {/* Remark Button */}
+                  
                 </div>
+                
               )}
+             
             </div>
           ))
         )}
       </div>
+
+      {/* Remark Drawer Side Panel */}
+      {remarkDrawerOpen && (
+        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-white shadow-xl flex flex-col">
+          {/* Header */}
+          <div className="bg-[#F87B1B] text-white p-4 flex items-center justify-between">
+            <h3 className="text-lg font-bold">Expense Remark</h3>
+            <button
+              onClick={closeRemarkDrawer}
+              className="text-white hover:opacity-80"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {/* Location Name */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-2">
+                Location
+              </label>
+              <p className="text-gray-800 font-medium">
+                {selectedRoute?.title}
+              </p>
+            </div>
+
+            {/* Date */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-2">
+                Date
+              </label>
+              <p className="text-gray-800">{selectedRoute?.date}</p>
+            </div>
+
+            {/* Total Expense */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-2">
+                Total Expense
+              </label>
+              <input
+                type="text"
+                value={`₹ ${selectedRoute?.totalExpense}`}
+                disabled
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+              />
+            </div>
+
+            {/* Remark Text Area */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-2">
+                Remark
+              </label>
+              <textarea
+                value={remarkText}
+                onChange={(e) => setRemarkText(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F87B1B] resize-none"
+                rows={5}
+                placeholder="Add remarks here..."
+              />
+            </div>
+
+            {/* Status Dropdown */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-2">
+                Status
+              </label>
+              <select
+                value={remarkStatus}
+                onChange={(e) => setRemarkStatus(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F87B1B] bg-white"
+              >
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Footer - Update Button */}
+          <div className="border-t p-6 bg-gray-50">
+            <Button
+              onClick={handleUpdateRemark}
+              className="w-full bg-[#F87B1B] hover:bg-[#E86A0A] text-white font-semibold py-2"
+            >
+              Update
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
