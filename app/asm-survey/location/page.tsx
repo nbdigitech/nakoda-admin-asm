@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
-import { getSurvey } from "@/services/masterData";
+import { getSurvey, getExpenses } from "@/services/masterData";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
@@ -37,6 +37,7 @@ function LocationMap() {
 
   const [isMounted, setIsMounted] = useState(false);
   const [locationData, setLocationData] = useState<LocationData[]>([]);
+  const [totalExpense, setTotalExpense] = useState(0);
 
   useEffect(() => {
     setIsMounted(true);
@@ -84,6 +85,24 @@ function LocationMap() {
     };
 
     fetchLocations();
+
+    const fetchExpenses = async () => {
+      if (!tourId) return;
+      try {
+        const res: any = await getExpenses({ tourId, filter: 0 }); // Assuming current/default filter
+        const data = res?.data?.data || res?.data || res || [];
+        if (Array.isArray(data)) {
+          const total = data.reduce(
+            (sum: number, item: any) => sum + (Number(item.amount) || 0),
+            0,
+          );
+          setTotalExpense(total);
+        }
+      } catch (error) {
+        console.error("Error fetching expenses:", error);
+      }
+    };
+    fetchExpenses();
   }, [tourId]);
 
   const getNumberedIcon = (number: number) => {
@@ -112,6 +131,43 @@ function LocationMap() {
       iconSize: [26, 26],
       iconAnchor: [13, 13],
     });
+  };
+
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) *
+        Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return parseFloat(d.toFixed(2));
+  };
+
+  const deg2rad = (deg: number) => {
+    return deg * (Math.PI / 180);
+  };
+
+  const calculateTotalDistance = (data: LocationData[]) => {
+    let total = 0;
+    for (let i = 0; i < data.length - 1; i++) {
+      total += calculateDistance(
+        data[i].latitude,
+        data[i].longitude,
+        data[i + 1].latitude,
+        data[i + 1].longitude,
+      );
+    }
+    return total.toFixed(2);
   };
 
   const queryLat = searchParams.get("lat");
@@ -156,13 +212,60 @@ function LocationMap() {
           )}
         </div>
 
-        <div className="flex justify-between text-sm text-gray-700">
-          {locationData.map((loc, index) => (
-            <div key={loc.id} className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-[#F87B1B] rounded-full" />
-              <span>{loc.location || `Stop ${index + 1}`}</span>
+        <div className="flex  mt-12 gap-12">
+          <div className="flex overflow-x-auto gap-2 items-center text-sm text-gray-700 pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent px-1">
+            {locationData.map((loc, index) => {
+              const distNext =
+                index < locationData.length - 1
+                  ? calculateDistance(
+                      loc.latitude,
+                      loc.longitude,
+                      locationData[index + 1].latitude,
+                      locationData[index + 1].longitude,
+                    )
+                  : 0;
+              return (
+                <div
+                  key={loc.id}
+                  className="flex items-center gap-2 whitespace-nowrap"
+                >
+                  <div className="flex flex-col items-center gap-1 min-w-[100px]">
+                    <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center border-2 border-orange-500 text-orange-700 font-bold text-xs ring-2 ring-white shadow-sm">
+                      {index + 1}
+                    </div>
+                    <span
+                      className="font-medium text-gray-800 max-w-[120px] truncate"
+                      title={loc.location || `Stop ${index + 1}`}
+                    >
+                      {loc.location || `Stop ${index + 1}`}
+                    </span>
+                  </div>
+
+                  {index < locationData.length - 1 && (
+                    <div className="flex flex-col items-center px-2">
+                      <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mb-1 border border-gray-200">
+                        {distNext} km
+                      </span>
+                      <div className="w-36 h-[2px] bg-gray-300 relative">
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[4px] border-t-transparent border-l-[6px] border-l-gray-300 border-b-[4px] border-b-transparent"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-6 bg-orange-50 px-6 py-2 rounded-xl border border-orange-100 shadow-sm min-w-max">
+            <div className="flex flex-col items-start">
+              <span className="font-semibold text-orange-800 text-[10px] uppercase tracking-wider">
+                Total Distance
+              </span>
+              <span className="font-bold text-xl text-orange-600">
+                {calculateTotalDistance(locationData)}{" "}
+                <span className="text-xs font-medium">km</span>
+              </span>
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </DashboardLayout>
