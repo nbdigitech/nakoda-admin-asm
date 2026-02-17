@@ -131,7 +131,7 @@ function LocationMap() {
       <h2 className="text-lg font-bold mb-4">Survey Route</h2>
 
       <div className="bg-white rounded-xl shadow p-4 space-y-4">
-        <div className="w-full h-[300px] rounded-lg overflow-hidden">
+        <div className="w-[50%] h-[300px] rounded-lg overflow-hidden">
           {isMounted && locationData.length > 0 && (
             <MapContainer
               center={center as any}

@@ -12,7 +12,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
+import { Edit, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { getSurvey, getDistrict } from "@/services/masterData";
 
 const formatDate = (timestamp: any) => {
@@ -110,6 +116,22 @@ function SurveyDetailsContent() {
     fetchData();
   }, [tourId]);
 
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
+    null,
+  );
+
+  const handleNextImage = () => {
+    if (selectedImageIndex === null) return;
+    setSelectedImageIndex((prev) => (prev! + 1) % surveys.length);
+  };
+
+  const handlePrevImage = () => {
+    if (selectedImageIndex === null) return;
+    setSelectedImageIndex(
+      (prev) => (prev! - 1 + surveys.length) % surveys.length,
+    );
+  };
+
   const handleLocationClick = (lat?: number, lng?: number, name?: string) => {
     let url = `/asm-survey/location?tourId=${tourId}`;
     if (lat && lng) url += `&lat=${lat}&lng=${lng}`;
@@ -189,11 +211,16 @@ function SurveyDetailsContent() {
 
                     <TableCell>
                       {detail.image ? (
-                        <img
-                          src={detail.image}
-                          alt="survey"
-                          className="w-12 h-12 rounded-lg object-cover"
-                        />
+                        <div
+                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setSelectedImageIndex(index)}
+                        >
+                          <img
+                            src={detail.image}
+                            alt="survey"
+                            className="w-12 h-12 rounded-lg object-cover"
+                          />
+                        </div>
                       ) : (
                         <div className="w-12 h-12 bg-gray-300 rounded-lg" />
                       )}
@@ -216,6 +243,54 @@ function SurveyDetailsContent() {
           Total Surveys: <span className="font-semibold">{surveys.length}</span>
         </div>
       </div>
+
+      <Dialog
+        open={selectedImageIndex !== null}
+        onOpenChange={(open) => !open && setSelectedImageIndex(null)}
+      >
+        <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-black/95 border-none">
+          <DialogTitle className="sr-only">Survey Image View</DialogTitle>
+          <div className="relative w-full h-[80vh] flex items-center justify-center">
+            {selectedImageIndex !== null && surveys[selectedImageIndex] && (
+              <>
+                {surveys[selectedImageIndex].image ? (
+                  <img
+                    src={surveys[selectedImageIndex].image}
+                    alt="Survey Fullview"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : (
+                  <div className="text-gray-400">No Image Available</div>
+                )}
+
+                <div className="absolute top-4 left-4 text-white bg-black/50 px-3 py-1 rounded-full text-sm">
+                  {surveys[selectedImageIndex].name} -{" "}
+                  {formatDate(surveys[selectedImageIndex].createdAt)}
+                </div>
+              </>
+            )}
+
+            <button
+              onClick={handlePrevImage}
+              className="absolute left-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors backdrop-blur-sm"
+            >
+              <ChevronLeft size={32} />
+            </button>
+
+            <button
+              onClick={handleNextImage}
+              className="absolute right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors backdrop-blur-sm"
+            >
+              <ChevronRight size={32} />
+            </button>
+
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 px-3 py-1 rounded-full text-sm text-white">
+              {(selectedImageIndex !== null ? selectedImageIndex : 0) + 1} /{" "}
+              {surveys.length}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
